@@ -15,7 +15,10 @@ use Time::HiRes;
 our $verbose=0;
 our $bridge; # Open device
 our $quiet=0;
-our $timediff=60*60*2;
+
+use Time::Local qw(timegm timelocal);
+my @t = localtime(time);
+our $timediff = timegm(@t) - timelocal(@t);
 
 my $rxlen=0; # Filter for get_pkt()
 
@@ -417,6 +420,15 @@ sub get_id {
     my $id=unpack("H*",get_data(7));
     wait_ok(1);
     return $id;
+};
+sub set_mac_width {
+    send_pkt_num(pack("C",(shift)-2),8);
+    wait_ok(1);
+};
+
+sub set_config {
+    send_pkt_num(pack("C",shift),9);
+    wait_ok(1);
 };
 
 
