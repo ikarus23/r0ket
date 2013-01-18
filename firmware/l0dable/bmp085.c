@@ -15,10 +15,12 @@
 
 /***********************************************************************
 * Monitor/Log temperatur (°C) and pressure (Pa) with your r0ket.
-* You need a BMP085 sensor (http://www.bosch-sensortec.com/content/language1/html/3477.htm).
+* You need a BMP085 sensor
+* (http://www.bosch-sensortec.com/content/language1/html/3477.htm).
 * For example on a board like this: https://www.sparkfun.com/products/9694
-* 
-* Use "python3 tools/BMP085/altitude.py BMP085.LOG 10" for calc. altitude (m).
+*
+* Use "python3 tools/BMP085/altitude.py BMP085.LOG 10"
+* for calc. altitude (m) (if you logged the data with ENABLE_LOGGING).
 *
 * With code snippets from http://bildr.org/2011/06/bmp085-arduino/
 *
@@ -33,7 +35,7 @@ const uint8_t OSS = 0;          // Oversampling Setting (0..3)
 #define LOG_FILE "BMP085.log"   // Name of the logfile.
         // (Delete if allready exists.)
         // Format: "temperatur, pressure" (temp in 0.1°C, pressure in Pa)
-#define ENABLE_LOGGING 1        // 0 = no loggin, 1 = loggin on
+#define ENABLE_LOGGING 0        // 0 = no loggin, 1 = loggin on
 #define REFRESH_INTERVAL 68     // Get new values (and log) every X ms.
         // + 10ms or more depending on OSS config for reading the values.
         // + Xms for logging to file (with write error check).
@@ -105,9 +107,9 @@ void mainLoop() {
     int32_t max_pres = pres;
     int32_t min_temp = temp;
     int32_t min_pres = pres;
-    
+
     FRESULT res;
-    
+
     // Open logfile.
     if (ENABLE_LOGGING) {
         res = f_open(&file, LOG_FILE, FA_CREATE_ALWAYS|FA_WRITE);
@@ -120,7 +122,7 @@ void mainLoop() {
             return;
         }
     }
-    
+
     do{
         // Get new values from sensor.
         bmp085Convert(&temp, &pres);
@@ -133,12 +135,12 @@ void mainLoop() {
             max_pres = pres;
         else if (pres < min_pres)
             min_pres = pres;
-            
-        if (ENABLE_LOGGING) 
+
+        if (ENABLE_LOGGING)
             if (logData())
                 return; // Data error.
-            
-        
+
+
         lcdClear();
         lcdPrintln("Temperature:");
         lcdPrint(" ");
@@ -168,7 +170,7 @@ void mainLoop() {
         lcdPrint(IntToStr(min_pres, 8, 0));
         lcdPrintln("Pa");
         lcdRefresh();
-        
+
         // Handle input.
         switch(getInputRaw()) {
             case BTN_UP:
@@ -195,10 +197,10 @@ uint8_t logData() {
     uint8_t buf2[15];
     uint8_t seperator[2] = {',', ' '};
     uint8_t end[1] = {'\n'};
-    
+
     itoa(temp, buf1, 10);
     itoa(pres, buf2, 10);
-    
+
     res = f_write(&file, buf1, strlen((char *)buf1), &written);
     if ((ret=checkError(written, strlen((char *)buf1), res)))
         return ret;
@@ -260,7 +262,7 @@ void bmp085Convert(int32_t* temperature, int32_t* pressure) {
 
     ut = bmp085ReadTemp();
     // Some bug here, have to read twice to get good data.
-    // (Taken from a tutorial, but I got good data by reading once!) 
+    // (Taken from a tutorial, but I got good data by reading once!)
     //~ ut = bmp085ReadTemp();
     up = bmp085ReadPressure();
     //~ up = bmp085ReadPressure();
@@ -357,8 +359,8 @@ int32_t bmp085ReadInt24(uint8_t address) {
     I2CWriteLength = 1;
     I2CReadLength = 3; // Read 3 bytes.
     i2cEngine();
-    return (((int32_t) I2CSlaveBuffer[0] << 16) | 
-        ((int32_t) I2CSlaveBuffer[1] << 8) | 
+    return (((int32_t) I2CSlaveBuffer[0] << 16) |
+        ((int32_t) I2CSlaveBuffer[1] << 8) |
         (int32_t) I2CSlaveBuffer[2]) >> (8-OSS);
 }
 

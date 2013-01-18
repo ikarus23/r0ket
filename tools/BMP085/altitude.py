@@ -3,52 +3,88 @@
 #
 #  altitude.py
 #
-#  Usage: python3 altitude.py path/to/BPM085/logfile X
-#   X = display the average over X log entrys.
+#  Usage: python3 altitude.py <path/to/BPM085/logfile> <n>
+#         n = display the average over n entries.
+#  Example: python3 altitude.py BPM085.log 10
+#
 #  
-#  Copyright 2012 IKARUS <ikarus@earth>
-#  
-#  This program is free software; you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation; either version 2 of the License, or
-#  (at your option) any later version.
-#  
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#  
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#  MA 02110-1301, USA.
-#  
-#  
+#  Copyright 2012 ossi (and ikarus)
+#
 
-import sys, math
+import sys
+import math
 
-def main():
-    fobj = open(sys.argv[1], "r")
-    i = 0
-    value = 0
-    for line in fobj:
-        value += int(line.split(",")[1])
-        i = i + 1
-        if i % int(sys.argv[2]) == 0:
-            value = value / int(sys.argv[2])
-            i = 0
-            print("%.1fM" % calcAltitude(value))
-            value = 0
-    return 0
+def avg(list):
+    """
+    Returns the average over all elements of list.
 
-def calcAltitude(pressure):
-    A = float(pressure)/101325
-    B = 1/5.25588
-    C = math.pow(A,B)
-    C = 1 - C
-    C = C /0.0000225577
-    return C
+    The argument 'list' has to have only numerical numbers.
+    """
+    return sum(list) / len(list)
+
+
+def prepare_list(iterator, count):
+    """
+    Returns a list, witch has 'count' elements or an empty list.
+    """
+    prepared_list = list(iterator)
+    if len(prepared_list) == count:
+        return prepared_list
+    return []
+
+
+def get_values_from_file(file, count):
+    """
+    Generator witch gives 'count' values from the file
+
+    'file' has to be a file object to a csv file. The second element
+    has to be an integer.
+    """
+    for i in range(count):
+        try:
+            yield int(file.readline().strip().split(',')[1])
+        except IndexError:
+            # Ignore empty lines
+            pass
+
+
+def calc_altitude(list):
+    """
+    Calculates the altitude for all list elements and retruns them
+    as list.
+
+    The argument 'list' has to have only numerical numbers.
+    """
+    l = []
+    for pressure in list:
+        A = float(pressure)/101325
+        B = 1/5.25588
+        C = math.pow(A,B)
+        C = 1 - C
+        C = C /0.0000225577
+        l.append(C)
+    return l
+
+
+def main(path, count):
+    """
+    Opens 'path' and converts the second column to altitude values
+    and then builds the average over 'count' of those entries.
+    Prints the output to stdout.
+    """
+    file = open(path)
+    while True:
+        try:
+            print("%.2f" % avg(calc_altitude(prepare_list( \
+                    get_values_from_file(file, count), count))))
+        except ZeroDivisionError:
+            break
+
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) != 3:
+        print("Usage: python3 %s <path/to/BPM085/logfile> <n>\n"
+        "       n = display the average over n entries" % sys.argv[0])
+        exit(1)
+    main(sys.argv[1], int(sys.argv[2]))
 
