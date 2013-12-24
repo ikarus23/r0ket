@@ -2,6 +2,8 @@
 #
 # vim:set ts=4 sw=4:
 
+# Maybe try "stty <$dev raw" if funky stuff
+
 use strict;
 
 use IO::Select;
@@ -121,11 +123,11 @@ if($cmd =~ /^h/ || $help){
         r0ket::set_rxlen(32);
         r0ket::set_config(1);
     }elsif ($sub =~/^s/i){ # Sniffing
-        r0ket::set_rxmac(pack("H*","5500000000"));
+        r0ket::set_rxmac(pack("H*","AA00000000"));
         r0ket::set_rxlen(32);
         r0ket::set_channel(shift);
-        r0ket::set_mac_width(2);
-        r0ket::set_config(0);
+        r0ket::set_mac_width(2); # sets the rxmac to 5500
+        r0ket::set_config(0); #disable the crc check
     }elsif ($sub =~/^k/i){ # Keyboard
         r0ket::set_channel(shift||25);
         r0ket::set_rxmac(pack("H*",shift||"9246075c59"));
@@ -249,7 +251,7 @@ if($cmd =~ /^h/ || $help){
     my $set=shift;
 
     if($set=~s/hex//){
-        $ARGV[0]=pack("H*",$ARGV[0]);
+        unshift @_, pack("H*",shift);
     };
     if ($set =~ /^tx/){
         r0ket::set_txmac(shift);
@@ -348,6 +350,13 @@ if($cmd =~ /^h/ || $help){
 
             $pkt.=shift;
             $pkt.="\0"x(30-length($pkt));
+        }elsif($scmd eq "g"){
+            $pkt.="g";
+            $pkt.=chr(shift); #gen
+            $pkt.=pack("N",shift||42);
+
+            $pkt.=shift;
+            $pkt.="\0"x(30-length($pkt));
         }else{
             die "Unknown mesh subtype: $scmd\n";
         };
@@ -360,6 +369,7 @@ if($cmd =~ /^h/ || $help){
     print "crc: ",unpack("n",substr($pkt,length($pkt)-2,2))," ";
     print "len: ",length($pkt),"\n";
 	while($cmd-->0){
+        print "write $cmd\n";
         r0ket::send_pkt($pkt);
         r0ket::wait_ok;
 	};

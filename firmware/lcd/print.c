@@ -7,7 +7,7 @@
 int x=0;
 int y=0;
 
-void checkScroll(void){
+static void checkScroll(void){
   if(y+font->u8Height>RESY){
       lcdShift(0,y+font->u8Height-RESY,false);
       y=RESY-font->u8Height;
@@ -23,31 +23,16 @@ void lcdNl(void){
   x=0;y+=font->u8Height;
 }
 
+void lcdCheckNl(void){
+    if(x>RESX)
+         lcdNl();
+}
+
 void lcdPrintln(const char *string){
   lcdPrint(string);
   lcdNl();
 }
   
-void lcdPrintInt(const int num){
-  checkScroll();
-  x=DoInt(x,y,num);
-}
-
-void lcdPrintIntHex(const int num){
-  checkScroll();
-  x=DoIntX(x,y,num);
-}
-
-void lcdPrintCharHex(const uint8_t num){
-  checkScroll();
-  x=DoCharX(x,y,num);
-}
-
-void lcdPrintShortHex(const uint16_t num){
-  checkScroll();
-  x=DoShortX(x,y,num);
-}
-
 void lcdClear(){
   x=0;y=0;
   lcdFill(0);

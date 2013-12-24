@@ -94,12 +94,12 @@ void nrf_write_long(const uint8_t cmd, int len, const uint8_t* data){
     nrf_write_long(C_W_REGISTER|(reg), len, data)
 
 // High-Level:
-void nrf_rcv_pkt_start(void){
+void nrf_rcv_pkt_start(char config){
 
     nrf_write_reg(R_CONFIG,
             R_CONFIG_PRIM_RX| // Receive mode
             R_CONFIG_PWR_UP|  // Power on
-            R_CONFIG_EN_CRC   // CRC on, single byte
+            config            // usually enable CRC.
             );
 
     nrf_cmd(C_FLUSH_RX);
@@ -112,18 +112,18 @@ int nrf_rcv_pkt_poll(int maxsize, uint8_t * pkt){
     uint8_t len;
     uint8_t status=0;
 
-    for(int i=0;i<maxsize;i++) pkt[i] = 0x00; // Sanity: clear packet buffer
-
     status =nrf_cmd_status(C_NOP);
 
-    if((status & R_STATUS_RX_P_NO) == R_STATUS_RX_FIFO_EMPTY){
-        if( (status & R_STATUS_RX_DR) == R_STATUS_RX_DR){
-#ifdef USB_CDC
-            puts("FIFO empty, but RX?\r\n");
-#endif
-            nrf_write_reg(R_STATUS,R_STATUS_RX_DR);
-        };
+    if( (status & R_STATUS_RX_DR) != R_STATUS_RX_DR){ // no pkt received
         return 0;
+    };
+
+    for(int i=0;i<maxsize;i++) pkt[i] = 0x00; // Sanity: clear packet buffer
+
+    if((status & R_STATUS_RX_P_NO) == R_STATUS_RX_FIFO_EMPTY){
+        // Error: where is our packet?
+        nrf_write_reg(R_STATUS,R_STATUS_RX_DR);
+        return -2;
     };
 
     nrf_read_long(C_R_RX_PL_WID,1,&len);
@@ -234,6 +234,23 @@ int nrf_rcv_pkt_time_encr(int maxtime, int maxsize, uint8_t * pkt, uint32_t cons
 }
 
 
+/* assumes all nrf setup already done */
+char nrf_snd_pkt(int size, uint8_t * pkt){
+    if(size > MAX_PKT)
+        size=MAX_PKT;
+
+    CS_LOW();
+    xmit_spi(C_W_TX_PAYLOAD);
+    sspSend(0,pkt,size);
+    CS_HIGH();
+
+    CE_HIGH();
+    delayms(1); // Send it.  (actually only needs 10us)
+    CE_LOW();
+
+    return nrf_cmd_status(C_NOP);
+};
+
 char nrf_snd_pkt_crc_encr(int size, uint8_t * pkt, uint32_t const key[4]){
 
     if(size > MAX_PKT)
@@ -251,16 +268,7 @@ char nrf_snd_pkt_crc_encr(int size, uint8_t * pkt, uint32_t const key[4]){
     if(key !=NULL)
         xxtea_encode_words((uint32_t*)pkt,size/4,key);
 
-    CS_LOW();
-    xmit_spi(C_W_TX_PAYLOAD);
-    sspSend(0,pkt,size);
-    CS_HIGH();
-
-    CE_HIGH();
-    delayms(1); // Send it.  (only needs >10ys, i think)
-    CE_LOW();
-
-    return nrf_cmd_status(C_NOP);
+    return nrf_snd_pkt(size,pkt);
 }
 
 void nrf_set_rx_mac(int pipe, int rxlen, int maclen, const uint8_t * mac){
